@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { RabbitMQService } from '../messaging/rabbitmq.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
-import { PaymentStatus } from '@prisma/client';
+import { PaymentStatus, PaymentTransaction } from '@prisma/client';
 
 @Injectable()
 export class PaymentsService {
@@ -27,7 +27,7 @@ export class PaymentsService {
 
     this.logger.log(`Transação criada com status PENDING: ${transaction.id}`);
 
-    this.rabbitMQ.publishPaymentRequested({
+    const requestedPublished = this.rabbitMQ.publishPaymentRequested({
       event: 'PAYMENT_REQUESTED',
       transactionId: transaction.id,
       userId: transaction.userId,
@@ -37,26 +37,17 @@ export class PaymentsService {
       createdAt: transaction.createdAt.toISOString(),
     });
 
-    await this.simulateProcessing();
+    if (!requestedPublished) {
+      this.logger.warn(`Falha ao publicar PAYMENT_REQUESTED para transação ${transaction.id}.`);
+    }
 
-    const confirmed = await this.prisma.paymentTransaction.update({
-      where: { id: transaction.id },
-      data: { status: PaymentStatus.SUCCESS },
+    void this.processConfirmation(transaction).catch((error) => {
+      this.logger.error(
+        `Erro no processamento em background da transação ${transaction.id}: ${error.message}`,
+      );
     });
 
-    this.logger.log(`Transação atualizada para SUCCESS: ${confirmed.id}`);
-
-    this.rabbitMQ.publishPaymentConfirmed({
-      event: 'PAYMENT_CONFIRMED',
-      transactionId: confirmed.id,
-      userId: confirmed.userId,
-      amount: confirmed.amount,
-      description: confirmed.description,
-      status: confirmed.status,
-      confirmedAt: confirmed.updatedAt.toISOString(),
-    });
-
-    return confirmed;
+    return transaction;
   }
 
   async findAll() {
@@ -75,6 +66,31 @@ export class PaymentsService {
     }
 
     return transaction;
+  }
+
+  private async processConfirmation(transaction: PaymentTransaction) {
+    await this.simulateProcessing();
+
+    const confirmed = await this.prisma.paymentTransaction.update({
+      where: { id: transaction.id },
+      data: { status: PaymentStatus.SUCCESS },
+    });
+
+    this.logger.log(`Transação atualizada para SUCCESS: ${confirmed.id}`);
+
+    const confirmedPublished = this.rabbitMQ.publishPaymentConfirmed({
+      event: 'PAYMENT_CONFIRMED',
+      transactionId: confirmed.id,
+      userId: confirmed.userId,
+      amount: confirmed.amount,
+      description: confirmed.description,
+      status: confirmed.status,
+      confirmedAt: confirmed.updatedAt.toISOString(),
+    });
+
+    if (!confirmedPublished) {
+      this.logger.warn(`Falha ao publicar PAYMENT_CONFIRMED para transação ${confirmed.id}.`);
+    }
   }
 
   private simulateProcessing(): Promise<void> {

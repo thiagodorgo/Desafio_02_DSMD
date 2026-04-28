@@ -8,6 +8,7 @@ export class RabbitMQConsumer implements OnModuleInit, OnModuleDestroy {
 
   private readonly exchange = process.env.RABBITMQ_EXCHANGE || 'payments.exchange';
   private readonly rabbitmqUrl = process.env.RABBITMQ_URL || 'amqp://admin:admin@rabbitmq:5672';
+  private readonly maxRetries = Number(process.env.RABBITMQ_MAX_RETRIES || 10);
   private connection: amqplib.ChannelModel;
   private channel: amqplib.Channel;
 
@@ -22,7 +23,7 @@ export class RabbitMQConsumer implements OnModuleInit, OnModuleDestroy {
   }
 
   private async connect() {
-    let retries = 5;
+    let retries = this.maxRetries;
     while (retries > 0) {
       try {
         this.connection = await amqplib.connect(this.rabbitmqUrl);
