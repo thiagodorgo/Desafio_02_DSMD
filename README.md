@@ -116,7 +116,11 @@ notification-service | [RabbitMQConsumer] Aguardando eventos do RabbitMQ...
 
 ## Como Testar
 
+> No PowerShell, `curl` é um alias de `Invoke-WebRequest` e não aceita as flags `-H`/`-d` no formato do curl do Linux. Use os exemplos PowerShell abaixo.
+
 ### Criar um pagamento
+
+**Linux/macOS (curl):**
 
 ```bash
 curl -X POST http://localhost:3000/payments \
@@ -126,6 +130,20 @@ curl -X POST http://localhost:3000/payments \
     "amount": 149.90,
     "description": "Compra no e-commerce CompreFácil"
   }'
+```
+
+**Windows PowerShell (Invoke-RestMethod):**
+
+```powershell
+$body = @{
+  userId = "user-001"
+  amount = 149.90
+  description = "Compra no e-commerce CompreFácil"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method Post -Uri "http://localhost:3000/payments" `
+  -ContentType "application/json" `
+  -Body $body
 ```
 
 ### Listar todos os pagamentos
@@ -158,7 +176,7 @@ Ao criar um pagamento:
    ```
    [NOTIFICATION] Usuário user-001: sua solicitação de pagamento da transação <id> foi recebida e está pendente.
    ```
-4. O `payment-service` simula a confirmação e atualiza o status para **SUCCESS**
+4. O `payment-service` continua o processamento em background, simula a confirmação e atualiza o status para **SUCCESS**
 5. O evento `PAYMENT_CONFIRMED` é publicado no RabbitMQ
 6. O `notification-service` consome o evento e exibe:
    ```
@@ -179,12 +197,19 @@ Ao criar um pagamento:
 
 ## Endpoints Disponíveis
 
-| Método | Endpoint          | Descrição                      |
-|--------|-------------------|--------------------------------|
-| POST   | /payments         | Criar e processar um pagamento |
-| GET    | /payments         | Listar todas as transações     |
-| GET    | /payments/:id     | Buscar transação por ID        |
-| GET    | /health           | Status do notification-service |
+### payment-service (porta 3000)
+
+| Método | Endpoint      | Descrição                      |
+|--------|---------------|--------------------------------|
+| POST   | /payments     | Criar e processar um pagamento |
+| GET    | /payments     | Listar todas as transações     |
+| GET    | /payments/:id | Buscar transação por ID        |
+
+### notification-service (porta 3001)
+
+| Método | Endpoint | Descrição                      |
+|--------|----------|--------------------------------|
+| GET    | /health  | Status do notification-service |
 
 ---
 
@@ -202,5 +227,8 @@ Ao criar um pagamento:
 ---
 
 ## Observações
+
+- As notificações do `notification-service` são simuladas via logs (`logger.log`) para manter o escopo acadêmico do desafio.
+- O endpoint `POST /payments` retorna a transação inicialmente em `PENDING`; a confirmação para `SUCCESS` ocorre de forma assíncrona em background.
 
 Este projeto foi estruturado para entrega acadêmica e versionamento no GitHub, seguindo boas práticas de desenvolvimento com microsserviços.

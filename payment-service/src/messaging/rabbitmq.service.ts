@@ -4,11 +4,12 @@ import * as amqplib from 'amqplib';
 @Injectable()
 export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RabbitMQService.name);
-  private connection: amqplib.Connection;
+  private connection: amqplib.ChannelModel;
   private channel: amqplib.Channel;
 
   private readonly exchange = process.env.RABBITMQ_EXCHANGE || 'payments.exchange';
   private readonly rabbitmqUrl = process.env.RABBITMQ_URL || 'amqp://admin:admin@rabbitmq:5672';
+  private readonly maxRetries = Number(process.env.RABBITMQ_MAX_RETRIES || 10);
 
   async onModuleInit() {
     await this.connect();
@@ -19,7 +20,7 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async connect() {
-    let retries = 5;
+    let retries = this.maxRetries;
     while (retries > 0) {
       try {
         this.connection = await amqplib.connect(this.rabbitmqUrl);
@@ -63,25 +64,33 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  publishPaymentRequested(payload: object) {
-    this.publish('payment.requested', payload);
+  publishPaymentRequested(payload: object): boolean {
+    return this.publish('payment.requested', payload);
   }
 
-  publishPaymentConfirmed(payload: object) {
-    this.publish('payment.confirmed', payload);
+  publishPaymentConfirmed(payload: object): boolean {
+    return this.publish('payment.confirmed', payload);
   }
 
-  private publish(routingKey: string, payload: object) {
+  private publish(routingKey: string, payload: object): boolean {
     try {
-      this.channel.publish(
+      const published = this.channel.publish(
         this.exchange,
         routingKey,
         Buffer.from(JSON.stringify(payload)),
         { persistent: true },
       );
-      this.logger.log(`Evento publicado com routing key: ${routingKey}`);
+
+      if (!published) {
+        this.logger.warn(`Canal RabbitMQ sem espaço para publicar evento [${routingKey}].`);
+      } else {
+        this.logger.log(`Evento publicado com routing key: ${routingKey}`);
+      }
+
+      return published;
     } catch (error) {
       this.logger.error(`Falha ao publicar evento [${routingKey}]: ${error.message}`);
+      return false;
     }
   }
 }
