@@ -4,7 +4,7 @@ import * as amqplib from 'amqplib';
 @Injectable()
 export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RabbitMQService.name);
-  private connection: amqplib.Connection;
+  private connection: amqplib.ChannelModel;
   private channel: amqplib.Channel;
 
   private readonly exchange = process.env.RABBITMQ_EXCHANGE || 'payments.exchange';
