@@ -176,7 +176,7 @@ Ao criar um pagamento:
    ```
    [NOTIFICATION] Usuário user-001: sua solicitação de pagamento da transação <id> foi recebida e está pendente.
    ```
-4. O `payment-service` simula a confirmação e atualiza o status para **SUCCESS**
+4. O `payment-service` continua o processamento em background, simula a confirmação e atualiza o status para **SUCCESS**
 5. O evento `PAYMENT_CONFIRMED` é publicado no RabbitMQ
 6. O `notification-service` consome o evento e exibe:
    ```
@@ -227,5 +227,8 @@ Ao criar um pagamento:
 ---
 
 ## Observações
+
+- As notificações do `notification-service` são simuladas via logs (`logger.log`) para manter o escopo acadêmico do desafio.
+- O endpoint `POST /payments` retorna a transação inicialmente em `PENDING`; a confirmação para `SUCCESS` ocorre de forma assíncrona em background.
 
 Este projeto foi estruturado para entrega acadêmica e versionamento no GitHub, seguindo boas práticas de desenvolvimento com microsserviços.
