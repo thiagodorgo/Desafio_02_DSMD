@@ -116,7 +116,11 @@ notification-service | [RabbitMQConsumer] Aguardando eventos do RabbitMQ...
 
 ## Como Testar
 
+> No PowerShell, `curl` é um alias de `Invoke-WebRequest` e não aceita as flags `-H`/`-d` no formato do curl do Linux. Use os exemplos PowerShell abaixo.
+
 ### Criar um pagamento
+
+**Linux/macOS (curl):**
 
 ```bash
 curl -X POST http://localhost:3000/payments \
@@ -126,6 +130,20 @@ curl -X POST http://localhost:3000/payments \
     "amount": 149.90,
     "description": "Compra no e-commerce CompreFácil"
   }'
+```
+
+**Windows PowerShell (Invoke-RestMethod):**
+
+```powershell
+$body = @{
+  userId = "user-001"
+  amount = 149.90
+  description = "Compra no e-commerce CompreFácil"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method Post -Uri "http://localhost:3000/payments" `
+  -ContentType "application/json" `
+  -Body $body
 ```
 
 ### Listar todos os pagamentos
