@@ -179,12 +179,19 @@ Ao criar um pagamento:
 
 ## Endpoints Disponíveis
 
-| Método | Endpoint          | Descrição                      |
-|--------|-------------------|--------------------------------|
-| POST   | /payments         | Criar e processar um pagamento |
-| GET    | /payments         | Listar todas as transações     |
-| GET    | /payments/:id     | Buscar transação por ID        |
-| GET    | /health           | Status do notification-service |
+### payment-service (porta 3000)
+
+| Método | Endpoint      | Descrição                      |
+|--------|---------------|--------------------------------|
+| POST   | /payments     | Criar e processar um pagamento |
+| GET    | /payments     | Listar todas as transações     |
+| GET    | /payments/:id | Buscar transação por ID        |
+
+### notification-service (porta 3001)
+
+| Método | Endpoint | Descrição                      |
+|--------|----------|--------------------------------|
+| GET    | /health  | Status do notification-service |
 
 ---
 
